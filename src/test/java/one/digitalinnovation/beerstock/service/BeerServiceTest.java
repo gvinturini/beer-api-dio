@@ -5,10 +5,9 @@ import one.digitalinnovation.beerstock.dto.BeerDTO;
 import one.digitalinnovation.beerstock.entity.Beer;
 import one.digitalinnovation.beerstock.exception.BeerAlreadyRegisteredException;
 import one.digitalinnovation.beerstock.exception.BeerNotFoundException;
+import one.digitalinnovation.beerstock.exception.BeerStockExceededException;
 import one.digitalinnovation.beerstock.mapper.BeerMapper;
 import one.digitalinnovation.beerstock.repository.BeerRepository;
-import org.hamcrest.MatcherAssert;
-import org.hamcrest.Matchers;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -21,7 +20,6 @@ import java.util.Optional;
 
 import static org.hamcrest.MatcherAssert.*;
 import static org.hamcrest.Matchers.*;
-import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.Mockito.*;
 
@@ -141,5 +139,21 @@ public class BeerServiceTest {
         verify(beerRepository, times(1)).findById(expectedDeletedBeerDTO.getId());
         verify(beerRepository, times(1)).deleteById(expectedDeletedBeerDTO.getId());
 
+    }
+
+    @Test
+    void whenIncrementIsCalledThenIncrementBeerStock() throws BeerNotFoundException, BeerStockExceededException {
+        BeerDTO expectedBeerDTO = BeerDTOBuilder.builder().build().toBeerDTO();
+        Beer expectedBeer = beerMapper.toModel(expectedBeerDTO);
+
+        when(beerRepository.findById(expectedBeerDTO.getId())).thenReturn(Optional.of(expectedBeer));
+        when(beerRepository.save(expectedBeer)).thenReturn(expectedBeer);
+
+        int quantityToIncrement = 10;
+        int expectedQuantityAfterIncrement = expectedBeerDTO.getQuantity() + quantityToIncrement;
+        BeerDTO incrementedBeerDTO = beerService.increment(expectedBeerDTO.getId(), quantityToIncrement);
+
+        assertThat(expectedQuantityAfterIncrement, equalTo(incrementedBeerDTO.getQuantity()));
+        assertThat(expectedQuantityAfterIncrement, lessThan(expectedBeerDTO.getMax()));
     }
 }
